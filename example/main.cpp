@@ -1,6 +1,7 @@
 #include "di.hpp"
 
 #include <iostream>
+#include <utility>
 
 class ivehicle
 {
@@ -14,9 +15,9 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const ivehicle& vec);
 protected:
-    explicit ivehicle(const std::string &name)
+    explicit ivehicle(std::string name)
         : id_(++id_counter_)
-        , name_(name)
+        , name_(std::move(name))
     {}
 
 private:
@@ -91,19 +92,8 @@ public:
   }
 };
 
-class vehicle_module_builder : public matador::di::module_builder
-{
-public:
-    void build(matador::di::module &module) override {
-        module.bind<ivehicle>("bike")->to_transient<bike>();
-        module.bind<ivehicle>("car")->to_transient<car>();
-        module.bind<ivehicle>("truck")->to_transient<truck>();
-
-        module.bind<igreeter>()->to_singleton<smart_greeter>();
-    }
-};
-
-using namespace matador;
+class iunknown
+{};
 
 void print_vehicle(di::inject<ivehicle> &vec)
 {
@@ -112,7 +102,14 @@ void print_vehicle(di::inject<ivehicle> &vec)
 
 int main()
 {
-    di::install_module(std::make_unique<vehicle_module_builder>());
+    di::install_module([](di::module &module) {
+      module.bind<ivehicle>("bike")->to_transient<bike>();
+      module.bind<ivehicle>("car")->to_transient<car>();
+      module.bind<ivehicle>("truck")->to_transient<truck>();
+    });
+    di::append_module([](di::module &module) {
+      module.bind<igreeter>()->to_singleton<smart_greeter>();
+    });
 
     di::inject<ivehicle> vec1("bike");
     di::inject<ivehicle> vec2("car");
@@ -139,6 +136,12 @@ int main()
     auto copyied_vec3 = vec3;
 
     print_vehicle(copyied_vec3);
+
+    try {
+      di::inject<iunknown> u;
+    } catch (std::logic_error &ex) {
+      std::cout << "caught exception: " << ex.what() << "\n";
+    }
 
     return 0;
 }

@@ -2,11 +2,13 @@
 #define DI_HPP
 
 #include <memory>
+#include <utility>
+#include <vector>
 #include <unordered_map>
 #include <typeindex>
 #include <functional>
+#include <stdexcept>
 
-namespace matador {
 namespace di {
 /**
  * Interface for the dependency injection
@@ -110,7 +112,7 @@ public:
   explicit instance_strategy(T &&obj)
     : instance_(obj) {}
 
-  void *acquire() override {
+  void* acquire() override {
     return &instance_;
   }
 
@@ -124,8 +126,8 @@ public:
   virtual ~proxy_base() = default;
 
   template<typename T>
-  T &get() const {
-    return *static_cast<T *>(strategy_->acquire());
+  T* get() const {
+    return static_cast<T *>(strategy_->acquire());
   }
 
 protected:
@@ -163,6 +165,12 @@ private:
   using t_type_proxy_map = std::unordered_map<std::type_index, std::shared_ptr<proxy_base>>;
 
 public:
+  void clear()
+  {
+    default_map_.clear();
+    module_map_.clear();
+  }
+
   template<typename I>
   std::shared_ptr<proxy<I>> bind() {
     return bind<I>(default_map_);
@@ -178,15 +186,15 @@ public:
   }
 
   template<typename I>
-  I& resolve() {
+  I* resolve() {
     return resolve<I>(default_map_);
   }
 
   template<typename I>
-  I& resolve(const std::string &name) {
+  I* resolve(const std::string &name) {
     auto i = module_map_.find(name);
     if (i == module_map_.end()) {
-        throw std::logic_error("unkown name " + name);
+        throw std::logic_error("unknown name " + name);
     }
     return resolve<I>(i->second);
   }
@@ -200,7 +208,7 @@ private:
   }
 
   template<typename I>
-  I& resolve(t_type_proxy_map &type_proxy_map) {
+  I* resolve(t_type_proxy_map &type_proxy_map) {
     auto i = type_proxy_map.find(std::type_index(typeid(I)));
     if (i == type_proxy_map.end()) {
       throw std::logic_error(std::string("couldn't find type ") + typeid(I).name());
@@ -212,14 +220,6 @@ private:
   t_type_proxy_map default_map_;
 
   std::unordered_map<std::string, t_type_proxy_map> module_map_ {};
-};
-
-class module_builder
-{
-public:
-  virtual ~module_builder() = default;
-
-  virtual void build(module &module) = 0;
 };
 
 template < typename T >
@@ -242,17 +242,29 @@ protected:
 class repository : public singleton<repository>
 {
 public:
-  void install_module(std::unique_ptr<module_builder> &&builder) {
-    builder->build(module_);
+  void clear()
+  {
+    module_.clear();
+  }
+
+  void install(const std::function<void(module&)>& builder)
+  {
+    module_.clear();
+    builder(module_);
+  }
+
+  void append(const std::function<void(module&)>& builder)
+  {
+    builder(module_);
   }
 
   template<typename I>
-  I &resolve() {
+  I* resolve() {
     return module_.resolve<I>();
   }
 
   template<typename I>
-  I &resolve(const std::string &name) {
+  I* resolve(const std::string &name) {
     return module_.resolve<I>(name);
   }
 
@@ -260,7 +272,16 @@ private:
   module module_;
 };
 
-
+/**
+ * @brief Resolves and provides the requested service
+ *
+ * The class inject acts a holder for the
+ * requested service. On construction it
+ * tries to resolve the given template type
+ * within the global service repository.
+ *
+ * @tparam T Type of the interface
+ */
 template<class T>
 class inject
 {
@@ -273,43 +294,72 @@ public:
     : obj(repository::instance().resolve<T>(name))
   {}
 
+  explicit inject(module &m)
+    : obj(m.resolve<T>())
+  {}
+
+  inject(module &m, const std::string &name)
+    : obj(m.resolve<T>(name))
+  {}
+
   inject(const inject &x)
     : obj(x.obj)
   {}
   
   inject& operator=(const inject &x)
   {
-    obj = x.obj;
+    if (this != *x) {
+      obj = x.obj;
+    }
     return *this;
   }
   
-  inject(inject &&x)
+  inject(inject &&x) noexcept
     : obj(x.obj)
-  {}
+  {
+    x.obj = nullptr;
+  }
   
-  inject& operator=(inject &&x)
+  inject& operator=(inject &&x) noexcept
   {
     obj = x.obj;
+    x.obj = nullptr;
     return *this;
   }
   
-  T* operator->() const {
-    return &obj;
-  }
-
-  T& operator*() const {
+  T* operator->() const
+  {
     return obj;
   }
+
+  T* get() const
+  {
+    return obj;
+  }
+  T& operator*() const
+  {
+    return *obj;
+  }
 private:
-  T &obj;
+  T* obj;
 };
 
-void install_module(std::unique_ptr<module_builder> &&builder)
+void clear_module()
 {
-  repository::instance().install_module(std::move(builder));
+  repository::instance().clear();
 }
 
+void install_module(const std::function<void(module&)>& builder)
+{
+  repository::instance().clear();
+  repository::instance().install(builder);
 }
+
+void append_module(const std::function<void(module&)>& builder)
+{
+  repository::instance().append(builder);
+}
+
 }
 
 #endif /* DI_HPP */
