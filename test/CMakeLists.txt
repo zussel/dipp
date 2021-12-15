@@ -13,13 +13,13 @@ add_executable(unit_tests tests.cpp)
 
 include_directories("../include")
 
-target_link_libraries(unit_tests PRIVATE gtest_main)
+target_link_libraries(unit_tests gtest gtest_main)
 
 # automatic discovery of unit tests
 include(GoogleTest)
 gtest_discover_tests(unit_tests
   PROPERTIES
-    LABELS "unit"
+  LABELS "dipp"
   DISCOVERY_TIMEOUT  # how long to wait (in seconds) before crashing
     240
   )

@@ -17,7 +17,16 @@ class smart_greeter : public igreeter
 public:
   std::string greet() const override
   {
-      return "hey dude\n";
+      return "hey dude";
+  }
+};
+
+class hello_greeter : public igreeter
+{
+public:
+  std::string greet() const override
+  {
+      return "hello";
   }
 };
 
@@ -46,9 +55,48 @@ private:
 
 long truck::id_counter_ = 0;
 
+TEST(dipp, inject)
+{
+  di::install_module([](di::module &module) {
+    module.bind<igreeter>()->to_singleton<smart_greeter>();
+  });
+
+  di::inject<igreeter> g1;
+
+  EXPECT_FALSE(g1.get() == nullptr);
+
+  auto g2 = g1;
+
+  EXPECT_FALSE(g2.get() == nullptr);
+  EXPECT_EQ(g1.get(), g2.get());
+
+  g2 = std::move(g1);
+
+  EXPECT_TRUE(g1.get() == nullptr);
+  EXPECT_FALSE(g2.get() == nullptr);
+  EXPECT_NE(g1.get(), g2.get());
+
+  auto g3(std::move(g2));
+
+  EXPECT_TRUE(g2.get() == nullptr);
+  EXPECT_FALSE(g3.get() == nullptr);
+  EXPECT_NE(g3.get(), g2.get());
+
+  di::module m;
+  m.bind<igreeter>()->to_singleton<hello_greeter>();
+  m.bind<igreeter>("smart")->to_singleton<smart_greeter>();
+
+  di::inject<igreeter> g4(m, "smart");
+  EXPECT_FALSE(g4.get() == nullptr);
+
+  di::inject<igreeter> g5(m);
+  EXPECT_FALSE(g5.get() == nullptr);
+
+  EXPECT_NE(g4.get(), g5.get());
+}
+
 TEST(dipp, inject_singleton)
 {
-
   di::install_module([](di::module &module) {
     module.bind<igreeter>()->to_singleton<smart_greeter>();
   });
@@ -60,6 +108,34 @@ TEST(dipp, inject_singleton)
   EXPECT_FALSE(g2.get() == nullptr);
 
   EXPECT_EQ(g1.get(), g2.get());
+
+  di::clear_module();
+
+  EXPECT_THROW(di::inject<igreeter>(), std::logic_error);
+}
+
+TEST(dipp, inject_named)
+{
+  di::install_module([](di::module &module) {
+    module.bind<igreeter>("smart")->to_singleton<smart_greeter>();
+  });
+
+  EXPECT_THROW(di::inject<igreeter>("hello"), std::logic_error);
+
+  di::append_module([](di::module &module) {
+    module.bind<igreeter>("hello")->to_singleton<hello_greeter>();
+  });
+
+
+  di::inject<igreeter> g1("smart");
+  di::inject<igreeter> g2("hello");
+
+  EXPECT_FALSE(g1.get() == nullptr);
+  EXPECT_FALSE(g2.get() == nullptr);
+
+  EXPECT_NE(g1.get(), g2.get());
+  EXPECT_EQ("hey dude", g1->greet());
+  EXPECT_EQ("hello", g2->greet());
 }
 
 TEST(dipp, inject_transient)

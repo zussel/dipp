@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16.0)
-project(di VERSION 0.1.0 LANGUAGES CXX)
+project(dipp VERSION 0.1.0 LANGUAGES CXX)
 
 # set the C++ standard
 set(CMAKE_CXX_STANDARD 14)
