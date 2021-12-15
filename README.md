@@ -5,6 +5,10 @@
 Goal of this project is to provide a simple C++ dependency injection or
 service locator mechanism.
 
+| Branches    | Linux-CI |
+|-------------|----------|
+| main      |[![Build Status](https://github.com/zussel/dipp/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/zussel/dipp/actions/workflows/linux.yml?query=branch%3Amain)|[![Build status]
+
 ## Motivation
 
 I wanted this mechanism as simple and intuitive as possible, so I
