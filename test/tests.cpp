@@ -141,7 +141,7 @@ TEST(dipp, inject_named)
 TEST(dipp, inject_transient)
 {
   di::install_module([](di::module &m) {
-    m.bind<icar>()->to_transient<truck>();
+      m.bind<icar>()->to<truck>();
   });
 
   di::inject<icar> t1;

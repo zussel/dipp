@@ -125,9 +125,9 @@ void print_vehicle(di::inject<ivehicle> &vec)
 int main()
 {
     di::install_module([](di::module &module) {
-      module.bind<ivehicle>("bike")->to_transient<bike>();
-      module.bind<ivehicle>("car")->to_transient<car>();
-      module.bind<ivehicle>("truck")->to_transient<truck>();
+        module.bind<ivehicle>( "bike" )->to<bike>();
+        module.bind<ivehicle>( "car" )->to<car>();
+        module.bind<ivehicle>( "truck" )->to<truck>();
     });
     di::append_module([](di::module &module) {
       module.bind<igreeter>()->to_singleton<smart_greeter>();

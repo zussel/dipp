@@ -100,7 +100,7 @@ the same or a derived class (```T```).
 ```cpp
 // register the transient strategy (always a new instance)
 template < class T, typename ...Args >
-di::proxy<i>::to_transient(Args &&...args);
+di::proxy<i>::to(Args &&...args);
 // register the singleton strategy (always the same instance) 
 template < class T, typename ...Args >
 di::proxy<i>::to_singleton(Args &&...args);

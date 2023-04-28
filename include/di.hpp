@@ -169,7 +169,7 @@ class proxy : public proxy_base
 {
 public:
   template<typename T, typename ...Args, typename std::enable_if<std::is_base_of<I, T>::value>::type * = nullptr>
-  void to_transient(Args &&...args) {
+  void to( Args &&...args) {
     initialize_strategy(std::make_unique<transient_strategy<T>>(std::forward<Args &&>(args)...));
   }
 
