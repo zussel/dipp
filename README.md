@@ -41,11 +41,12 @@ Just ```include "di.hpp"``` and you're done.
 
 ### Service types
 
-A service can be bound by now in three different ways:
+A service can be bound by now in four different ways:
 
 - in transient scope (every inject leads to a new instance)
 - in singleton scope (every inject leads to the same instance)
 - as a given instance (every inject leads to the provided instance)
+- in singleton per thread scope (every inject leads to the same instance with current thread)
 
 ### Named services
 
@@ -103,6 +104,9 @@ di::proxy<i>::to_transient(Args &&...args);
 // register the singleton strategy (always the same instance) 
 template < class T, typename ...Args >
 di::proxy<i>::to_singleton(Args &&...args);
+// register the singleton per thread strategy (always the same instance) 
+template < class T, typename ...Args >
+di::proxy<i>::to_singleton_per_thread(Args &&...args);
 // register the given instance
 template < class T >
 di::proxy<i>::to_instance(T &&obj);
