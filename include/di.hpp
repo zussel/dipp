@@ -7,6 +7,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <typeindex>
+#include <thread>
 #include <functional>
 #include <stdexcept>
 
