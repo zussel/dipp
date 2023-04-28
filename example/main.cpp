@@ -1,5 +1,6 @@
 #include "di.hpp"
 
+#include <thread>
 #include <iostream>
 #include <utility>
 
@@ -95,6 +96,27 @@ public:
 class iunknown
 {};
 
+class iperthread
+{
+public:
+    virtual ~iperthread() = default;
+    virtual void dump() = 0;
+};
+
+class perthreaddumper : public iperthread
+{
+public:
+    explicit perthreaddumper( std::string name )
+    : name_(std::move(name))
+    {}
+    void dump() override
+    {
+        std::cout << name_ << ": thread id " << std::this_thread::get_id() << "\n";
+    }
+
+private:
+    std::string name_;
+};
 void print_vehicle(di::inject<ivehicle> &vec)
 {
     std::cout << "vehicle <" << *vec << "> has " << vec->num_tyres() << " tyres with " << vec->seats() << " seats\n";
@@ -109,6 +131,9 @@ int main()
     });
     di::append_module([](di::module &module) {
       module.bind<igreeter>()->to_singleton<smart_greeter>();
+    });
+    di::append_module([](di::module &module) {
+      module.bind<iperthread>()->to_singleton_per_thread<perthreaddumper>("otto");
     });
 
     di::inject<ivehicle> vec1("bike");
@@ -133,15 +158,28 @@ int main()
 
     moved_greeter->greet();
 
-    auto copyied_vec3 = vec3;
+    auto copied_vec3 = vec3;
 
-    print_vehicle(copyied_vec3);
+    print_vehicle(copied_vec3);
 
     try {
       di::inject<iunknown> u;
+      u.get();
     } catch (std::logic_error &ex) {
       std::cout << "caught exception: " << ex.what() << "\n";
     }
 
+    di::inject<iperthread> ptd1;
+    ptd1->dump();
+    di::inject<iperthread> ptd2;
+    ptd2->dump();
+
+    auto t1 = std::thread([]() {
+        di::inject<iperthread> ptd3;
+        ptd3->dump();
+        di::inject<iperthread> ptd4;
+        ptd4->dump();
+    });
+    t1.join();
     return 0;
 }

@@ -4,6 +4,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <mutex>
 #include <unordered_map>
 #include <typeindex>
 #include <functional>
@@ -100,6 +101,29 @@ private:
   std::unique_ptr<T> instance_;
 };
 
+template<class T>
+class singleton_per_thread_strategy : public strategy
+{
+public:
+    template<typename ...Args>
+    explicit singleton_per_thread_strategy(Args &&...args) {
+        creator_ = [args..., this]() {
+            thread_local auto instance = std::make_unique<T>(args...);
+            std::lock_guard<std::mutex> lock(instance_mutex_);
+            auto it = instance_map_.insert({std::this_thread::get_id(), std::move(instance)}).first;
+            return it->second.get();
+        };
+    }
+
+    void *acquire() override {
+        return creator_();
+    }
+
+private:
+    std::function<T *()> creator_{};
+    std::mutex instance_mutex_;
+    std::unordered_map<std::thread::id, std::unique_ptr<T>> instance_map_;
+};
 /**
  * @brief Provides a specific instance on injection
  * 
@@ -156,6 +180,11 @@ public:
   template<typename T, typename ...Args, typename std::enable_if<std::is_base_of<I, T>::value>::type * = nullptr>
   void to_singleton(Args &&...args) {
     initialize_strategy(std::make_unique<singleton_strategy<T>>(std::forward<Args &&>(args)...));
+  }
+
+  template<typename T, typename ...Args, typename std::enable_if<std::is_base_of<I, T>::value>::type * = nullptr>
+  void to_singleton_per_thread(Args &&...args) {
+    initialize_strategy(std::make_unique<singleton_per_thread_strategy<T>>(std::forward<Args &&>(args)...));
   }
 };
 
